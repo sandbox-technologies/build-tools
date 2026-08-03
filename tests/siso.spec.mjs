@@ -60,6 +60,9 @@ describe('Siso tuning', () => {
     process.env.ELECTRON_RBE_REMOTE_JOBS = 'zero';
     expect(() => flags(config, true)).toThrow(/positive integer/);
 
+    process.env.ELECTRON_RBE_REMOTE_JOBS = '2.5';
+    expect(() => flags(config, true)).toThrow(/positive integer/);
+
     delete process.env.ELECTRON_RBE_REMOTE_JOBS;
     process.env.ELECTRON_RBE_FS_MIN_FLUSH_TIMEOUT = 'forever';
     expect(() => flags(config, true)).toThrow(/positive duration/);

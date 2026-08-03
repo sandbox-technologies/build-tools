@@ -40,7 +40,7 @@ function getStarFile(envVar: string, filename: string): string {
 function positiveIntegerEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) return fallback;
-  const value = Number.parseInt(raw, 10);
+  const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < 1) {
     throw new Error(`${name} must be a positive integer; got ${raw}`);
   }
