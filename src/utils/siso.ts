@@ -26,7 +26,7 @@ export function env(config: ConfigLike): Record<string, string> {
     SISO_CREDENTIAL_HELPER: reclient.helperPath(config),
   };
 
-  return Object.assign(base, reclient.helperFlags());
+  return Object.assign(base, reclient.helperFlags(config));
 }
 
 function getStarFile(envVar: string, filename: string): string {
