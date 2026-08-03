@@ -65,6 +65,15 @@ function outputLocalStrategy(): 'full' | 'greedy' | 'minimum' {
   return value;
 }
 
+function durationEnv(name: string): string | undefined {
+  const value = process.env[name];
+  if (!value) return undefined;
+  if (!/^[1-9][0-9]*(?:ms|s|m|h)$/.test(value)) {
+    throw new Error(`${name} must be a positive duration such as 60s; got ${value}`);
+  }
+  return value;
+}
+
 export function flags(config: ConfigLike, hasExecute: boolean): (string | number)[] {
   if (config.remoteBuild !== 'siso') return [];
 
@@ -86,6 +95,11 @@ export function flags(config: ConfigLike, hasExecute: boolean): (string | number
   const localJobs = process.env['ELECTRON_RBE_LOCAL_JOBS'];
   if (localJobs) {
     result.push('-local_jobs', positiveIntegerEnv('ELECTRON_RBE_LOCAL_JOBS', 1));
+  }
+
+  const fsMinFlushTimeout = durationEnv('ELECTRON_RBE_FS_MIN_FLUSH_TIMEOUT');
+  if (fsMinFlushTimeout) {
+    result.push('-fs_min_flush_timeout', fsMinFlushTimeout);
   }
 
   if (booleanEnv('ELECTRON_RBE_CACHE_WRITE')) {
