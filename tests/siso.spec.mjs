@@ -39,19 +39,21 @@ describe('Siso tuning', () => {
     process.env.ELECTRON_RBE_CACHE_WRITE = '1';
     process.env.ELECTRON_RBE_FAST_LOCAL = '1';
 
-    expect(flags(config, true)).toEqual(expect.arrayContaining([
-      '-remote_jobs',
-      400,
-      '-local_jobs',
-      24,
-      '-output_local_strategy',
-      'minimum',
-      '-fs_min_flush_timeout',
-      '60s',
-      '-re_cache_enable_write',
-      '-batch=false',
-      '-fast_local',
-    ]));
+    expect(flags(config, true)).toEqual(
+      expect.arrayContaining([
+        '-remote_jobs',
+        400,
+        '-local_jobs',
+        24,
+        '-output_local_strategy',
+        'minimum',
+        '-fs_min_flush_timeout',
+        '60s',
+        '-re_cache_enable_write',
+        '-batch=false',
+        '-fast_local',
+      ]),
+    );
   });
 
   it('rejects invalid tuning values', () => {

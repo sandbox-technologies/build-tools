@@ -148,7 +148,9 @@ export function auth(config: ConfigLike): boolean {
     const flags = helperFlags(config);
     return flags['RBE_exec_strategy'] !== 'local';
   } else {
-    console.error(result.stderr?.toString() || result.stdout?.toString() || result.error?.message || '');
+    console.error(
+      result.stderr?.toString() || result.stdout?.toString() || result.error?.message || '',
+    );
     console.error(
       `${color.err} You do not have valid auth for Reclient, please run ${color.cmd(
         'e d rbe login',

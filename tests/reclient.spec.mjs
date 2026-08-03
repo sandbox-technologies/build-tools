@@ -17,14 +17,17 @@ describe('custom RBE credential helpers', () => {
     temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'build-tools-rbe-helper-'));
     helper = path.join(temporary, 'credential-helper.sh');
     invocationLog = path.join(temporary, 'invocations.log');
-    fs.writeFileSync(helper, `#!/bin/sh
+    fs.writeFileSync(
+      helper,
+      `#!/bin/sh
 echo "$1" >> ${JSON.stringify(invocationLog)}
 case "$1" in
   status) echo "Authentication Status: Authenticated" ;;
   flags) echo '{"RBE_exec_strategy":"remote_local_fallback"}' ;;
   *) exit 2 ;;
 esac
-`);
+`,
+    );
     fs.chmodSync(helper, 0o755);
     config = {
       remoteBuild: 'siso',
