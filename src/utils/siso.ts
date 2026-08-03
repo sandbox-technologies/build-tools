@@ -26,7 +26,7 @@ export function env(config: ConfigLike): Record<string, string> {
     SISO_CREDENTIAL_HELPER: reclient.helperPath(config),
   };
 
-  return Object.assign(base, reclient.helperFlags());
+  return Object.assign(base, reclient.helperFlags(config));
 }
 
 function getStarFile(envVar: string, filename: string): string {
@@ -37,12 +37,51 @@ function getStarFile(envVar: string, filename: string): string {
   return path.resolve(import.meta.dirname, '../../tools', filename);
 }
 
+function positiveIntegerEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error(`${name} must be a positive integer; got ${raw}`);
+  }
+  return value;
+}
+
+function booleanEnv(name: string): boolean {
+  const value = process.env[name];
+  if (!value) return false;
+  if (value === '1' || value === 'true') return true;
+  if (value === '0' || value === 'false') return false;
+  throw new Error(`${name} must be 1, 0, true, or false; got ${value}`);
+}
+
+function outputLocalStrategy(): 'full' | 'greedy' | 'minimum' {
+  const value = process.env['ELECTRON_RBE_OUTPUT_LOCAL_STRATEGY'] || 'full';
+  if (value !== 'full' && value !== 'greedy' && value !== 'minimum') {
+    throw new Error(
+      `ELECTRON_RBE_OUTPUT_LOCAL_STRATEGY must be full, greedy, or minimum; got ${value}`,
+    );
+  }
+  return value;
+}
+
+function durationEnv(name: string): string | undefined {
+  const value = process.env[name];
+  if (!value) return undefined;
+  if (!/^[1-9][0-9]*(?:ms|s|m|h)$/.test(value)) {
+    throw new Error(`${name} must be a positive duration such as 60s; got ${value}`);
+  }
+  return value;
+}
+
 export function flags(config: ConfigLike, hasExecute: boolean): (string | number)[] {
   if (config.remoteBuild !== 'siso') return [];
 
   const result: (string | number)[] = [
     '-remote_jobs',
-    200,
+    positiveIntegerEnv('ELECTRON_RBE_REMOTE_JOBS', 200),
+    '-output_local_strategy',
+    outputLocalStrategy(),
     '-project',
     SISO_PROJECT,
     '-reapi_instance',
@@ -52,6 +91,24 @@ export function flags(config: ConfigLike, hasExecute: boolean): (string | number
     '-load',
     getStarFile('ELECTRON_BUILD_TOOLS_MAIN_STAR', 'main.star'),
   ];
+
+  const localJobs = process.env['ELECTRON_RBE_LOCAL_JOBS'];
+  if (localJobs) {
+    result.push('-local_jobs', positiveIntegerEnv('ELECTRON_RBE_LOCAL_JOBS', 1));
+  }
+
+  const fsMinFlushTimeout = durationEnv('ELECTRON_RBE_FS_MIN_FLUSH_TIMEOUT');
+  if (fsMinFlushTimeout) {
+    result.push('-fs_min_flush_timeout', fsMinFlushTimeout);
+  }
+
+  if (booleanEnv('ELECTRON_RBE_CACHE_WRITE')) {
+    result.push('-re_cache_enable_write');
+  }
+
+  if (booleanEnv('ELECTRON_RBE_FAST_LOCAL')) {
+    result.push('-batch=false', '-fast_local');
+  }
 
   if (!hasExecute) {
     result.push('-re_exec_enable=false');

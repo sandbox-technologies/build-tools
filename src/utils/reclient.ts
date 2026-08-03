@@ -101,8 +101,8 @@ export function downloadAndPrepareRBECredentialHelper(config: ConfigLike): void 
   fs.writeFileSync(reclientTagFile, CREDENTIAL_HELPER_TAG);
 }
 
-export function helperFlags(): Record<string, string> {
-  const result = childProcess.spawnSync(rbeHelperPath, ['flags'], {
+export function helperFlags(config?: ConfigLike): Record<string, string> {
+  const result = childProcess.spawnSync(helperPath(config), ['flags'], {
     stdio: 'pipe',
   });
 
@@ -137,18 +137,20 @@ export function env(config: ConfigLike | undefined): Record<string, string | num
     base['RBE_fail_early_min_fallback_ratio'] = 0;
   }
 
-  return Object.assign(base, helperFlags());
+  return Object.assign(base, helperFlags(config));
 }
 
-export function auth(_config: ConfigLike): boolean {
-  const result = childProcess.spawnSync(rbeHelperPath, ['status'], {
+export function auth(config: ConfigLike): boolean {
+  const result = childProcess.spawnSync(helperPath(config), ['status'], {
     stdio: 'pipe',
   });
   if (result.status === 0) {
-    const flags = helperFlags();
+    const flags = helperFlags(config);
     return flags['RBE_exec_strategy'] !== 'local';
   } else {
-    console.error(result.stdout.toString());
+    console.error(
+      result.stderr?.toString() || result.stdout?.toString() || result.error?.message || '',
+    );
     console.error(
       `${color.err} You do not have valid auth for Reclient, please run ${color.cmd(
         'e d rbe login',
