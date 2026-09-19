@@ -32,6 +32,14 @@ def init(ctx):
       step_config["executables"].append("buildtools/reclient_cfgs/chromium-browser-clang/clang_remote_wrapper")
       step_config["executables"].append("third_party/llvm-build/Release+Asserts_linux/bin/clang")
 
+    # Chromium's clang rules carry a 2m remote deadline sized for Google's RBE.
+    # On the self-hosted Buildbarn pool a queued compile can legitimately wait
+    # longer than that during a cold build; when it does, siso abandons the
+    # action and (without -strict_remote) recompiles locally. Give compiles
+    # 10m; links keep Chromium's own remote_link_timeout.
+    for rule in step_config["rules"]:
+      if (rule["name"].startswith("clang/") or rule["name"].startswith("clang-cl/")) and rule.get("timeout") == "2m":
+        rule["timeout"] = "10m"
     if runtime.os == "darwin":
       # Update platforms to match our default siso config instead of reclient configs.
       step_config["platforms"].update({

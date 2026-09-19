@@ -110,6 +110,59 @@ export function flags(config: ConfigLike, hasExecute: boolean): (string | number
     result.push('-batch=false', '-fast_local');
   }
 
+  // Keep the Execute stream open instead of closing it and polling the
+  // longrunning Operations service. Buildbarn (our REAPI backend) does not
+  // implement google.longrunning.Operations, so the polling path fails with
+  // Unimplemented, the step hits its remote deadline and falls back to a local
+  // compile. Measured on the Studio release builds: 74% (Aug 17) and 23%
+  // (Sep 18) of remote compiles fell back this way.
+  if (booleanEnv('ELECTRON_RBE_KEEP_EXEC_STREAM')) {
+    result.push('-reapi_keep_exec_stream');
+  }
+
+  // Never run a remote-capable step locally (no fast-local racing, no local
+  // fallback). Remote errors are retried (-reapi_max_retries) and then fail the
+  // build instead of silently moving compiles onto the local machine.
+  if (booleanEnv('ELECTRON_RBE_STRICT_REMOTE')) {
+    result.push('-strict_remote');
+  }
+
+  const maxRetries = process.env['ELECTRON_RBE_MAX_RETRIES'];
+  if (maxRetries) {
+    result.push('-reapi_max_retries', positiveIntegerEnv('ELECTRON_RBE_MAX_RETRIES', 10));
+  }
+
+  // mTLS to the REAPI frontend. siso also reads $RBE_tls_ca_cert /
+  // $RBE_tls_client_auth_cert / $RBE_tls_client_auth_key defaults (provided by
+  // the credential helper's flags), so these explicit flags only apply when the
+  // caller overrides them.
+  const tlsCa = process.env['ELECTRON_RBE_TLS_CA_CERT'];
+  const tlsCert = process.env['ELECTRON_RBE_TLS_CLIENT_CERT'];
+  const tlsKey = process.env['ELECTRON_RBE_TLS_CLIENT_KEY'];
+  if (tlsCa || tlsCert || tlsKey) {
+    if (!(tlsCa && tlsCert && tlsKey)) {
+      throw new Error(
+        'ELECTRON_RBE_TLS_CA_CERT, ELECTRON_RBE_TLS_CLIENT_CERT and ELECTRON_RBE_TLS_CLIENT_KEY must be set together',
+      );
+    }
+    for (const [name, file] of [
+      ['ELECTRON_RBE_TLS_CA_CERT', tlsCa],
+      ['ELECTRON_RBE_TLS_CLIENT_CERT', tlsCert],
+      ['ELECTRON_RBE_TLS_CLIENT_KEY', tlsKey],
+    ] as const) {
+      if (!fs.existsSync(file)) throw new Error(`${name} points at a missing file: ${file}`);
+    }
+    result.push(
+      '-reapi_insecure=false',
+      '-reapi_tls_ca_cert',
+      tlsCa,
+      '-reapi_tls_client_auth_cert',
+      tlsCert,
+      '-reapi_tls_client_auth_key',
+      tlsKey,
+    );
+  }
+
   if (!hasExecute) {
     result.push('-re_exec_enable=false');
   }
