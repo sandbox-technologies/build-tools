@@ -106,7 +106,9 @@ export function flags(config: ConfigLike, hasExecute: boolean): (string | number
     result.push('-re_cache_enable_write');
   }
 
-  if (booleanEnv('ELECTRON_RBE_FAST_LOCAL')) {
+  // -fast_local races local execution against remote for every step; it is
+  // mutually exclusive with strict remote (see below), which wins.
+  if (booleanEnv('ELECTRON_RBE_FAST_LOCAL') && !booleanEnv('ELECTRON_RBE_STRICT_REMOTE')) {
     result.push('-batch=false', '-fast_local');
   }
 
